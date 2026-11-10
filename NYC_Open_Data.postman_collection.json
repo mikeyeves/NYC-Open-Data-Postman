@@ -1,0 +1,1675 @@
+{
+  "info": {
+    "_postman_id": "99314951-6b4d-4151-af22-7065dc283d52",
+    "name": "NYC Open Data (data.cityofnewyork.us)",
+    "description": "General-purpose Postman collection for **NYC Open Data** \u2014 search the whole catalog, inspect any dataset, and query or download any of its ~2,400 datasets through the Socrata APIs.\n\n1. **Discover** \u2014 find a dataset ID (saves the first result to `dataset_id`)\n2. **Metadata** \u2014 see its columns\n3. **Query** \u2014 filter, aggregate, download (SoQL)\n4. **SODA3** \u2014 newer POST endpoint (needs a free app token)\n5. **Examples** \u2014 PLUTO, DOB filings, landmarks, 311, vital records\n\nNo key needed for 1\u20133 and 5. An app token (`app_token` \u2192 `X-App-Token` header) raises rate limits. Results render as tables in the **Visualize** tab.\n\nDocs: https://dev.socrata.com \u00b7 Discovery API: https://dev.socrata.com/docs/other/discovery",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "1. Discover datasets (Socrata Discovery API)",
+      "item": [
+        {
+          "name": "Search the catalog",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1?domains=data.cityofnewyork.us&search_context=data.cityofnewyork.us&q={{search}}&only=dataset&order=relevance&limit=25&offset=0",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "domains",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "search_context",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "q",
+                  "value": "{{search}}",
+                  "description": "Keywords",
+                  "disabled": false
+                },
+                {
+                  "key": "only",
+                  "value": "dataset",
+                  "description": "dataset | map | file | chart | filter | href",
+                  "disabled": false
+                },
+                {
+                  "key": "categories",
+                  "value": "",
+                  "description": "e.g. City Government",
+                  "disabled": true
+                },
+                {
+                  "key": "tags",
+                  "value": "",
+                  "description": "e.g. dob",
+                  "disabled": true
+                },
+                {
+                  "key": "attribution",
+                  "value": "",
+                  "description": "Agency, e.g. Department of Buildings (DOB)",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "relevance",
+                  "description": "relevance | name | updatedAt | page_views_total",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": false,
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Full-text search of all ~3,000 NYC Open Data assets. Shows a table in **Visualize**; saves the first result's ID to `dataset_id`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Discovery API -> table of datasets; first result's id saved to {{dataset_id}}.",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const rows = (j.results || []).map(r => ({",
+                  "  id: r.resource.id, name: r.resource.name, type: r.resource.type,",
+                  "  agency: r.resource.attribution || \"\", updated: (r.resource.data_updated_at || r.resource.updatedAt || \"\").slice(0,10),",
+                  "  link: r.link || r.permalink || \"\"",
+                  "}));",
+                  "if (rows[0]) pm.collectionVariables.set(\"dataset_id\", rows[0].id);",
+                  "console.log(`${j.resultSetSize} total matches; showing ${rows.length}`);",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}</style>",
+                  "<p><b>{{total}}</b> matches \u00b7 showing {{rows.length}} \u00b7 first id saved to <code>dataset_id</code></p>",
+                  "<table><tr><th>ID</th><th>Name</th><th>Type</th><th>Agency</th><th>Updated</th></tr>",
+                  "{{#each rows}}<tr><td><a href=\"{{link}}\" target=\"_blank\">{{id}}</a></td><td>{{name}}</td><td>{{type}}</td><td>{{agency}}</td><td>{{updated}}</td></tr>{{/each}}</table>`, { rows, total: j.resultSetSize });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Datasets from one agency",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1?domains=data.cityofnewyork.us&search_context=data.cityofnewyork.us&attribution={{agency}}&only=dataset&order=name&limit=100",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "domains",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "search_context",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "attribution",
+                  "value": "{{agency}}",
+                  "description": "Exact agency name as shown in results",
+                  "disabled": false
+                },
+                {
+                  "key": "only",
+                  "value": "dataset",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "order",
+                  "value": "name",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Every dataset published by an agency (default: DORIS / Municipal Archives)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Discovery API -> table of datasets; first result's id saved to {{dataset_id}}.",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const rows = (j.results || []).map(r => ({",
+                  "  id: r.resource.id, name: r.resource.name, type: r.resource.type,",
+                  "  agency: r.resource.attribution || \"\", updated: (r.resource.data_updated_at || r.resource.updatedAt || \"\").slice(0,10),",
+                  "  link: r.link || r.permalink || \"\"",
+                  "}));",
+                  "if (rows[0]) pm.collectionVariables.set(\"dataset_id\", rows[0].id);",
+                  "console.log(`${j.resultSetSize} total matches; showing ${rows.length}`);",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}</style>",
+                  "<p><b>{{total}}</b> matches \u00b7 showing {{rows.length}} \u00b7 first id saved to <code>dataset_id</code></p>",
+                  "<table><tr><th>ID</th><th>Name</th><th>Type</th><th>Agency</th><th>Updated</th></tr>",
+                  "{{#each rows}}<tr><td><a href=\"{{link}}\" target=\"_blank\">{{id}}</a></td><td>{{name}}</td><td>{{type}}</td><td>{{agency}}</td><td>{{updated}}</td></tr>{{/each}}</table>`, { rows, total: j.resultSetSize });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recently updated datasets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1?domains=data.cityofnewyork.us&search_context=data.cityofnewyork.us&only=dataset&order=updatedAt&limit=25",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "domains",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "search_context",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "only",
+                  "value": "dataset",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "order",
+                  "value": "updatedAt",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Discovery API -> table of datasets; first result's id saved to {{dataset_id}}.",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const rows = (j.results || []).map(r => ({",
+                  "  id: r.resource.id, name: r.resource.name, type: r.resource.type,",
+                  "  agency: r.resource.attribution || \"\", updated: (r.resource.data_updated_at || r.resource.updatedAt || \"\").slice(0,10),",
+                  "  link: r.link || r.permalink || \"\"",
+                  "}));",
+                  "if (rows[0]) pm.collectionVariables.set(\"dataset_id\", rows[0].id);",
+                  "console.log(`${j.resultSetSize} total matches; showing ${rows.length}`);",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}</style>",
+                  "<p><b>{{total}}</b> matches \u00b7 showing {{rows.length}} \u00b7 first id saved to <code>dataset_id</code></p>",
+                  "<table><tr><th>ID</th><th>Name</th><th>Type</th><th>Agency</th><th>Updated</th></tr>",
+                  "{{#each rows}}<tr><td><a href=\"{{link}}\" target=\"_blank\">{{id}}</a></td><td>{{name}}</td><td>{{type}}</td><td>{{agency}}</td><td>{{updated}}</td></tr>{{/each}}</table>`, { rows, total: j.resultSetSize });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Most-viewed datasets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1?domains=data.cityofnewyork.us&search_context=data.cityofnewyork.us&only=dataset&order=page_views_total&limit=25",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "domains",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "search_context",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "only",
+                  "value": "dataset",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "order",
+                  "value": "page_views_total",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Discovery API -> table of datasets; first result's id saved to {{dataset_id}}.",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const rows = (j.results || []).map(r => ({",
+                  "  id: r.resource.id, name: r.resource.name, type: r.resource.type,",
+                  "  agency: r.resource.attribution || \"\", updated: (r.resource.data_updated_at || r.resource.updatedAt || \"\").slice(0,10),",
+                  "  link: r.link || r.permalink || \"\"",
+                  "}));",
+                  "if (rows[0]) pm.collectionVariables.set(\"dataset_id\", rows[0].id);",
+                  "console.log(`${j.resultSetSize} total matches; showing ${rows.length}`);",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}</style>",
+                  "<p><b>{{total}}</b> matches \u00b7 showing {{rows.length}} \u00b7 first id saved to <code>dataset_id</code></p>",
+                  "<table><tr><th>ID</th><th>Name</th><th>Type</th><th>Agency</th><th>Updated</th></tr>",
+                  "{{#each rows}}<tr><td><a href=\"{{link}}\" target=\"_blank\">{{id}}</a></td><td>{{name}}</td><td>{{type}}</td><td>{{agency}}</td><td>{{updated}}</td></tr>{{/each}}</table>`, { rows, total: j.resultSetSize });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Look up datasets by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1?ids={{dataset_id}}",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "{{dataset_id}}",
+                  "description": "Comma-separated 4x4 IDs",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Discovery API -> table of datasets; first result's id saved to {{dataset_id}}.",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const rows = (j.results || []).map(r => ({",
+                  "  id: r.resource.id, name: r.resource.name, type: r.resource.type,",
+                  "  agency: r.resource.attribution || \"\", updated: (r.resource.data_updated_at || r.resource.updatedAt || \"\").slice(0,10),",
+                  "  link: r.link || r.permalink || \"\"",
+                  "}));",
+                  "if (rows[0]) pm.collectionVariables.set(\"dataset_id\", rows[0].id);",
+                  "console.log(`${j.resultSetSize} total matches; showing ${rows.length}`);",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}</style>",
+                  "<p><b>{{total}}</b> matches \u00b7 showing {{rows.length}} \u00b7 first id saved to <code>dataset_id</code></p>",
+                  "<table><tr><th>ID</th><th>Name</th><th>Type</th><th>Agency</th><th>Updated</th></tr>",
+                  "{{#each rows}}<tr><td><a href=\"{{link}}\" target=\"_blank\">{{id}}</a></td><td>{{name}}</td><td>{{type}}</td><td>{{agency}}</td><td>{{updated}}</td></tr>{{/each}}</table>`, { rows, total: j.resultSetSize });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1/domain_categories?domains=data.cityofnewyork.us",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1",
+                "domain_categories"
+              ],
+              "query": [
+                {
+                  "key": "domains",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Facet / count list -> table",
+                  "const j = pm.response.json();",
+                  "const rows = (j.results || []).map(r => ({ name: r.domain_category || r.domain_tag || JSON.stringify(r), count: r.count }));",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px}</style>",
+                  "<table><tr><th>Name</th><th>Datasets</th></tr>{{#each rows}}<tr><td>{{name}}</td><td>{{count}}</td></tr>{{/each}}</table>`, { rows });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List tags",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1/domain_tags?domains=data.cityofnewyork.us&limit=200",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1",
+                "domain_tags"
+              ],
+              "query": [
+                {
+                  "key": "domains",
+                  "value": "data.cityofnewyork.us",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "200",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Facet / count list -> table",
+                  "const j = pm.response.json();",
+                  "const rows = (j.results || []).map(r => ({ name: r.domain_category || r.domain_tag || JSON.stringify(r), count: r.count }));",
+                  "pm.visualizer.set(`<style>body{font:13px system-ui}td,th{border:1px solid #ccc;padding:3px 6px}</style>",
+                  "<table><tr><th>Name</th><th>Datasets</th></tr>{{#each rows}}<tr><td>{{name}}</td><td>{{count}}</td></tr>{{/each}}</table>`, { rows });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "All facets (types, categories, agencies, update frequency)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{discovery_baseUrl}}/api/catalog/v1/domains/data.cityofnewyork.us/facets",
+              "host": [
+                "{{discovery_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "v1",
+                "domains",
+                "data.cityofnewyork.us",
+                "facets"
+              ],
+              "query": []
+            },
+            "description": "Includes the `Dataset-Information_Agency` facet with dataset counts per agency."
+          },
+          "response": []
+        }
+      ],
+      "description": "Find dataset IDs. The ID (e.g. `5gq7-rgmv`) is what every other request needs."
+    },
+    {
+      "name": "2. Dataset metadata",
+      "item": [
+        {
+          "name": "Columns (field names, types, descriptions)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/api/views/{{dataset_id}}/columns.json",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "views",
+                "{{dataset_id}}",
+                "columns.json"
+              ],
+              "query": []
+            },
+            "description": "Use `fieldName` values in $select / $where."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Column list for a dataset -> table (fieldName is what you use in $select / $where)",
+                  "const cols = pm.response.json();",
+                  "const rows = cols.map(c => ({ field: c.fieldName, type: c.dataTypeName, name: c.name, desc: (c.description || \"\").slice(0,200) }));",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}</style>",
+                  "<p>{{rows.length}} columns \u2014 use <b>field</b> in $select / $where</p>",
+                  "<table><tr><th>field</th><th>type</th><th>display name</th><th>description</th></tr>",
+                  "{{#each rows}}<tr><td><code>{{field}}</code></td><td>{{type}}</td><td>{{name}}</td><td>{{desc}}</td></tr>{{/each}}</table>`, { rows });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Full metadata (description, agency, update frequency)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/api/views/{{dataset_id}}.json",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "views",
+                "{{dataset_id}}.json"
+              ],
+              "query": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Row count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.json?$select=count(*) AS rows",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "count(*) AS rows",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "3. Query any dataset (SODA 2.1)",
+      "item": [
+        {
+          "name": "First rows",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.json?$limit={{limit}}",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.json"
+              ],
+              "query": [
+                {
+                  "key": "$limit",
+                  "value": "{{limit}}",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Quick look at any dataset."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SoQL query ($select / $where / $order)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.json?$select=*&$where={{where}}&$order=:id&$limit={{limit}}&$offset=0",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "*",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$where",
+                  "value": "{{where}}",
+                  "description": "SoQL condition, e.g. upper(last_name)='STEUHL' AND year between '1880' and '1900'",
+                  "disabled": false
+                },
+                {
+                  "key": "$order",
+                  "value": ":id",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "{{limit}}",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$offset",
+                  "value": "0",
+                  "description": "Paging",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "SQL-like filtering. Strings use single quotes; text compares are case-sensitive (wrap in upper())."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simple equality filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.json?{{filter_field}}={{filter_value}}&$limit={{limit}}",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.json"
+              ],
+              "query": [
+                {
+                  "key": "{{filter_field}}",
+                  "value": "{{filter_value}}",
+                  "description": "Any column=value pair",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "{{limit}}",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "`?column=value` shorthand."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Full-text search within a dataset",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.json?$q={{search}}&$limit={{limit}}",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.json"
+              ],
+              "query": [
+                {
+                  "key": "$q",
+                  "value": "{{search}}",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "{{limit}}",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Group & count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.json?$select={{group_field}}, count(*) AS n&$group={{group_field}}&$order=n DESC&$limit=50",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "{{group_field}}, count(*) AS n",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$group",
+                  "value": "{{group_field}}",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$order",
+                  "value": "n DESC",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Aggregate counts by any column."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download as CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.csv?$limit=50000",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.csv"
+              ],
+              "query": [
+                {
+                  "key": "$where",
+                  "value": "{{where}}",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "$limit",
+                  "value": "50000",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Use *Send and Download*. Max 50,000 rows per request \u2014 page with $offset."
+          },
+          "response": []
+        },
+        {
+          "name": "Download as GeoJSON",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/{{dataset_id}}.geojson?$limit=1000",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "{{dataset_id}}.geojson"
+              ],
+              "query": [
+                {
+                  "key": "$limit",
+                  "value": "1000",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "For datasets with a geometry column."
+          },
+          "response": []
+        },
+        {
+          "name": "Export entire dataset (CSV)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/api/views/{{dataset_id}}/rows.csv?accessType=DOWNLOAD",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "views",
+                "{{dataset_id}}",
+                "rows.csv"
+              ],
+              "query": [
+                {
+                  "key": "accessType",
+                  "value": "DOWNLOAD",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Full export, no row limit. Can be very large."
+          },
+          "response": []
+        }
+      ],
+      "description": "SoQL reference: https://dev.socrata.com/docs/queries/"
+    },
+    {
+      "name": "4. SODA3 query endpoint (requires app token)",
+      "item": [
+        {
+          "name": "SoQL query (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": false
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/api/v3/views/{{dataset_id}}/query.json",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v3",
+                "views",
+                "{{dataset_id}}",
+                "query.json"
+              ],
+              "query": []
+            },
+            "description": "Newer endpoint. Requires an app token: create one free at https://data.cityofnewyork.us/profile/edit/developer_settings, put it in `app_token`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"SELECT * LIMIT 10\",\n  \"page\": {\n    \"pageNumber\": 1,\n    \"pageSize\": 100\n  },\n  \"includeSynthetic\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "5. Ready-made examples",
+      "item": [
+        {
+          "name": "PLUTO: property by address (64uk-42ks)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/64uk-42ks.json?$select=address,bbl,yearbuilt,numfloors,unitsres,landuse,ownername,zipcode&address=30 GREENWICH AVENUE",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "64uk-42ks.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "address,bbl,yearbuilt,numfloors,unitsres,landuse,ownername,zipcode",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "address",
+                  "value": "30 GREENWICH AVENUE",
+                  "description": "Upper-case, street type spelled out",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Primary Land Use Tax Lot Output \u2014 year built, floors, units, owner, block/lot for every tax lot."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PLUTO: every lot on a tax block",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/64uk-42ks.json?$select=address,lot,yearbuilt,unitsres&$where=borough='MN' AND block=606&$order=lot",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "64uk-42ks.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "address,lot,yearbuilt,unitsres",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$where",
+                  "value": "borough='MN' AND block=606",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$order",
+                  "value": "lot",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "All lots on one Manhattan block."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DOB job filings for a building (ic3t-wcy2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/ic3t-wcy2.json?$select=job__,job_type,latest_action_date,job_description&$where=borough='MANHATTAN' AND house__='30' AND street_name like 'GREENWICH AVE%'&$limit=50",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "ic3t-wcy2.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "job__,job_type,latest_action_date,job_description",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$where",
+                  "value": "borough='MANHATTAN' AND house__='30' AND street_name like 'GREENWICH AVE%'",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Department of Buildings job application filings \u2014 alterations, new buildings, demolitions."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Landmark sites by name (buis-pvji)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/buis-pvji.json?$select=lpc_name,address,landmarkty,desdate,bbl&$where=upper(lpc_name) like upper('%{{search}}%')&$limit=50",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "buis-pvji.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "lpc_name,address,landmarkty,desdate,bbl",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$where",
+                  "value": "upper(lpc_name) like upper('%{{search}}%')",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Landmarks Preservation Commission individual landmark sites."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "311 requests near a point (erm2-nwe9)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/erm2-nwe9.json?$select=created_date,complaint_type,descriptor,incident_address&$where=within_circle(location, {{lat}}, {{lon}}, 100)&$order=created_date DESC&$limit=50",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "erm2-nwe9.json"
+              ],
+              "query": [
+                {
+                  "key": "$select",
+                  "value": "created_date,complaint_type,descriptor,incident_address",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$where",
+                  "value": "within_circle(location, {{lat}}, {{lon}}, 100)",
+                  "description": "Radius in metres",
+                  "disabled": false
+                },
+                {
+                  "key": "$order",
+                  "value": "created_date DESC",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Geo query example. Default point = 30 Greenwich Ave."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Births index by surname (5gq7-rgmv)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-App-Token",
+                "value": "{{app_token}}",
+                "description": "Optional Socrata app token. Raises rate limits; required for SODA3.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{nyc_baseUrl}}/resource/5gq7-rgmv.json?$where=upper(last_name)=upper('{{surname}}')&$order=year&$limit=200",
+              "host": [
+                "{{nyc_baseUrl}}"
+              ],
+              "path": [
+                "resource",
+                "5gq7-rgmv.json"
+              ],
+              "query": [
+                {
+                  "key": "$where",
+                  "value": "upper(last_name)=upper('{{surname}}')",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$order",
+                  "value": "year",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "$limit",
+                  "value": "200",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "See the dedicated NYC Historical Vital Records collection for more."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generic table for any SODA JSON array result",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = Array.isArray(rows) ? rows : (rows.results || []);",
+                  "const cols = [...new Set(list.slice(0,50).flatMap(r => Object.keys(r)))].filter(c => !/^:|the_geom|geometry|location$/.test(c)).slice(0,25);",
+                  "const out = list.map(r => cols.map(c => { const v = r[c]; return v && typeof v === \"object\" ? JSON.stringify(v).slice(0,80) : v ?? \"\"; }));",
+                  "console.log(`${list.length} rows`);",
+                  "pm.visualizer.set(`<style>body{font:12px system-ui}td,th{border:1px solid #ccc;padding:2px 5px;vertical-align:top;max-width:320px}</style>",
+                  "<p><b>{{n}}</b> rows</p><table><tr>{{#each cols}}<th>{{this}}</th>{{/each}}</tr>{{#each out}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}</table>`, { cols, out, n: list.length });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Tested queries against popular datasets."
+    }
+  ],
+  "variable": [
+    {
+      "key": "nyc_baseUrl",
+      "value": "https://data.cityofnewyork.us"
+    },
+    {
+      "key": "discovery_baseUrl",
+      "value": "https://api.us.socrata.com"
+    },
+    {
+      "key": "app_token",
+      "value": ""
+    },
+    {
+      "key": "search",
+      "value": "landmark"
+    },
+    {
+      "key": "agency",
+      "value": "Department of Records and Information Services (DORIS)"
+    },
+    {
+      "key": "dataset_id",
+      "value": "64uk-42ks"
+    },
+    {
+      "key": "limit",
+      "value": "100"
+    },
+    {
+      "key": "where",
+      "value": "yearbuilt < 1900 AND borough='MN'"
+    },
+    {
+      "key": "filter_field",
+      "value": "zipcode"
+    },
+    {
+      "key": "filter_value",
+      "value": "10011"
+    },
+    {
+      "key": "group_field",
+      "value": "landuse"
+    },
+    {
+      "key": "lat",
+      "value": "40.73517"
+    },
+    {
+      "key": "lon",
+      "value": "-73.99975"
+    },
+    {
+      "key": "surname",
+      "value": "Glassheim"
+    }
+  ]
+}
